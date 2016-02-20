@@ -9,6 +9,7 @@
 #include <random>
 #include "Node.h"
 #include "DataParser.h"
+#include "NeuralNet.h"
 
 void connectNetwork();
 void printNetwork();
@@ -363,7 +364,6 @@ void readFile(){
 
 
 int main(int argc, char* argv[]){
-	srand(time(NULL)); //set a random seed
 	
 	DataParser dp;
 	dp.setDataInfo(2, 30, 1);
@@ -377,11 +377,17 @@ int main(int argc, char* argv[]){
 	global.numEpochs = 20000; //specify max number of epochs
 	global.numSetsTU = 16; //set the number of training sets to use
 	global.learnRate = 0.15; //set the learning rate
+
+	NeuralNet nn = NeuralNet(20000,16,0.3);
+	nn.addTrainingData(global.trainingSet);
 	//specifies the number of hidden layers and nodes. 15 is the lowest I managed to get to work with a 0.15 learning rate
-	int hidden[] = { 18 }; //set the number of hidden nodes in each hidden layer
-	initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1); //init the neural net
-	trainANN(); //train the neural net
-	useANN(); //allow user to use net
+	int hidden[] = { 20 }; //set the number of hidden nodes in each hidden layer
+	nn.initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1);
+	nn.trainANN();
+	nn.useANN();
+	//initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1); //init the neural net
+	//trainANN(); //train the neural net
+	//useANN(); //allow user to use net
 	//int a;
 	//std::cin >> a;
 }
