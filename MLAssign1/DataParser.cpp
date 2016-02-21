@@ -76,3 +76,7 @@ int DataParser::classExists(std::string cls){
 		return -1;
 	return loc;
 }
+
+std::vector<std::vector<float>> DataParser::getData(){
+	return data;
+}

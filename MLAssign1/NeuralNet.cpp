@@ -16,7 +16,7 @@ NeuralNet::~NeuralNet()
 {
 }
 
-void NeuralNet::addTrainingData(std::vector<std::array<int, 5>> data){
+void NeuralNet::addTrainingData(std::vector<std::vector<float>> data){
 	trainingSet = data;
 	ansLoc = trainingSet.at(0).size()-1;
 }
@@ -110,7 +110,7 @@ void NeuralNet::initWeights(){
 
 
 //does the forward pass through the network on a given input
-void NeuralNet::runANN(std::array<int, 5> values){
+void NeuralNet::runANN(std::vector<float> values){
 	for (int i = 0; i < input.size(); i++){
 		input.at(i).setValue(values.at(i));
 		//initial push doesn't pass the node value through the sigmoid function
@@ -187,7 +187,7 @@ void NeuralNet::useANN(){
 	printf("Network Type: %d-%d-%d\n\n", input.size(), hidden.at(0).size(), output.size());
 	printf("Results for inputs:\n");
 	//go through and print out all training examples and info
-	for (std::array<int, 5> inp : trainingSet){
+	for (std::vector<float> inp : trainingSet){
 		runANN(inp);
 		for (int i = 0; i < trainingSet.at(0).size() - 1; i++){
 			printf("%d", inp.at(i));
@@ -236,7 +236,7 @@ void NeuralNet::useANN(){
 			input += "0";
 
 			//convert to int array
-			std::array<int, 5> inp;
+			std::vector<float> inp;
 			for (int i = 0; i < sizeof(inputArr); i++){
 				inp[i] = ((int)inputArr[i]) - 48;
 			}

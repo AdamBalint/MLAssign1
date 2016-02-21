@@ -369,17 +369,17 @@ int main(int argc, char* argv[]){
 	dp.setDataInfo(2, 30, 1);
 
 	//dp.readFile("../Input/input.txt");
-//	dp.readFile("../Input/Breast_Cancer/wdbc.data");
-//	dp.printData();
+	dp.readFile("../Input/Breast_Cancer/wdbc.data");
+	dp.printData();
 	
 	
-	readFile(); //read in the training examples
+//	readFile(); //read in the training examples
 	global.numEpochs = 20000; //specify max number of epochs
 	global.numSetsTU = 16; //set the number of training sets to use
 	global.learnRate = 0.15; //set the learning rate
 
 	NeuralNet nn = NeuralNet(20000,16,0.3);
-	nn.addTrainingData(global.trainingSet);
+	nn.addTrainingData(dp.getData());
 	//specifies the number of hidden layers and nodes. 15 is the lowest I managed to get to work with a 0.15 learning rate
 	int hidden[] = { 20 }; //set the number of hidden nodes in each hidden layer
 	nn.initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1);
