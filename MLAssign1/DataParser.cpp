@@ -21,25 +21,26 @@ void DataParser::readFile(std::string file){
 			std::vector<std::string> tokens;
 			std::string tmp;
 			std::stringstream ss(line);
-			while (getline (ss, tmp, ',')){
+			while (getline(ss, tmp, ',')){
 				tokens.push_back(tmp);
 			}
+			if (tokens.size() == attrSize - attrStart + 1){
+				std::vector<float> res;
+				for (int i = attrStart; i < attrSize; i++){
+					res.push_back(std::atof(tokens.at(i).c_str()));
+				}
 
-			std::vector<float> res;
-			for (int i = attrStart; i < attrSize; i++){
-				res.push_back(std::atof(tokens.at(i).c_str()));
-			}
+				int clsLoc = classExists(tokens.at(classLoc));
+				if (clsLoc == -1){
+					classes.push_back(tokens.at(classLoc));
+					res.push_back(classes.end() - classes.begin());
+				}
+				else {
+					res.push_back(clsLoc);
+				}
 
-			int clsLoc = classExists(tokens.at(classLoc));
-			if (clsLoc == -1){
-				classes.push_back(tokens.at(classLoc));
-				res.push_back(classes.end()-classes.begin());
+				data.push_back(res); //add to collection
 			}
-			else {
-				res.push_back(clsLoc);
-			}
-			
-			data.push_back(res); //add to collection
 		}
 	}
 	in.close(); //close the file

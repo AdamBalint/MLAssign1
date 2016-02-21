@@ -92,7 +92,7 @@ void NeuralNet::connectNetwork(){
 	}
 }
 
-//initializes the weights by calling each nodes to generate the amount of weights needed
+//initializes the weights by calling each node to generate the amount of weights needed
 void NeuralNet::initWeights(){
 	for (int i = 0; i < input.size(); i++){
 		input.at(i).initWeights();
@@ -154,26 +154,35 @@ void NeuralNet::trainANN(){
 			bool incorrect = false; // assume the correct result was predicted
 			//loop through all output nodes
 			for (int i = 0; i < output.size(); i++){
-				double rawRes = output.at(i).getOutput();//get raw output
-				int result = rawRes < 0.5 ? 0 : 1; // round the result to get prediction
+				int fired = getHighest();
+				double rawRes = output.at(fired).getOutput();//get raw output
 				int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
-				//			if (correctRes != result){ //if they are not equal
-				incorrect = true; //then the prediction was incorrect
-				double err = correctRes - rawRes; //calculate the error
-				output.at(i).addError(err); //add the error to the output node
-				//			}
+
+				for (int i = 0; i < output.size(); i++){
+					double out = output.at(i).getOutput();
+					double err = (i == ansLoc ? 1 : 0) - out;
+					output.at(i).addError(err);
+				}
+
+				if (fired == ansLoc){
+					//increment correct counter
+				}
+
+				//incorrect = true; //then the prediction was incorrect
+				//double err = correctRes - rawRes; //calculate the error
+				//output.at(i).addError(err); //add the error to the output node
+				
 			}
-			if (incorrect){ //if the result was incorrect then
-				correctNum--;//decrease correct num
-				backPass();//and do the back propogation
-			}
+			
+			backPass();//and do the back propogation
+			
 			resetValues(); //reset the value, output and error at all nodes to reset network
 		}
 		//printf("Correct: %d/%d\n", correctNum, global.numSetsTU); //used to print network for debugging
-		if (correctNum >= numSetsTU * 1.00){ // if all predicted then break
-			printf("All test cases predicted!\n");
-			break;
-		}
+//		if (correctNum >= numSetsTU * 0.9){ // if all predicted then break
+//			printf("All test cases predicted!\n");
+//			break;
+//		}
 
 	}
 	//print out how long it took to train
@@ -193,14 +202,14 @@ void NeuralNet::useANN(){
 			printf("%d", inp.at(i));
 		}
 		printf("\t");
-		for (int i = 0; i < output.size(); i++){
-			double rawRes = output.at(i).getOutput();
-			int result = rawRes < 0.5 ? 0 : 1;
+		int result = getHighest();
+		double rawRes = output.at(result).getOutput();
+		
 
-			printf("Expected: %d   Result: %d   %f%% accuracy   ", inp.at(4), result, result == 0 ? (((0.5 - rawRes) / 0.5) * 100) : (((rawRes - 0.5) / 0.5) * 100));
-			printf("Raw result: %f\n", rawRes);
-			resetValues();
-		}
+		printf("Expected: %d   Result: %d   %f%% accuracy   ", inp.at(4), result, (rawRes * 100));
+		printf("Raw result: %f\n", rawRes);
+		resetValues();
+		
 	}
 
 	//allow user to experiment with inputs
@@ -330,4 +339,17 @@ void NeuralNet::printNetwork(){
 		n.printConnections();
 		printf("\n");
 	}
+}
+
+int NeuralNet::getHighest(){
+	int firedNode = -1;
+	double highestNode = 0;
+	for (int i = 0; i < output.size(); i++){
+		double rawRes = output.at(i).getOutput();//get raw output
+		if (rawRes > highestNode){
+			highestNode = rawRes;
+			firedNode = i;
+		}
+	}
+	return firedNode;
 }

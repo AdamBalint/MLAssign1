@@ -26,6 +26,7 @@ public:
 	void adjustWeights();
 	void resetValues();
 	void addTrainingData(std::vector<std::vector<float>>);
+	int getHighest();
 
 private:
 	std::vector<Node> input; // holds the input nodes

@@ -366,10 +366,10 @@ void readFile(){
 int main(int argc, char* argv[]){
 	
 	DataParser dp;
-	dp.setDataInfo(2, 30, 1);
+	dp.setDataInfo(0, 4, 4);
 
-	//dp.readFile("../Input/input.txt");
-	dp.readFile("../Input/Breast_Cancer/wdbc.data");
+	dp.readFile("../Input/input.txt");
+	//dp.readFile("../Input/Breast_Cancer/wdbc.data");
 	dp.printData();
 	
 	
@@ -382,7 +382,7 @@ int main(int argc, char* argv[]){
 	nn.addTrainingData(dp.getData());
 	//specifies the number of hidden layers and nodes. 15 is the lowest I managed to get to work with a 0.15 learning rate
 	int hidden[] = { 20 }; //set the number of hidden nodes in each hidden layer
-	nn.initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1);
+	nn.initANN(4, hidden, std::end(hidden) - std::begin(hidden), 2);
 	nn.trainANN();
 	nn.useANN();
 	//initANN(4, hidden, std::end(hidden) - std::begin(hidden), 1); //init the neural net
