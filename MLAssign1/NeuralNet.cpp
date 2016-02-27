@@ -12,6 +12,13 @@ NeuralNet::NeuralNet(int epochs, int trainToUse, float lr)
 	srand(time(NULL)); //set a random seed
 }
 
+NeuralNet::NeuralNet(int epochs, float trainToUse, float lr)
+	: numEpochs(epochs), learnRate(lr)
+{
+	srand(time(NULL)); //set a random seed
+	numSetsTU = floor(trainingSet.size()*trainToUse);
+}
+
 NeuralNet::~NeuralNet()
 {
 }
@@ -19,6 +26,10 @@ NeuralNet::~NeuralNet()
 void NeuralNet::addTrainingData(std::vector<std::vector<float>> data){
 	trainingSet = data;
 	ansLoc = trainingSet.at(0).size()-1;
+}
+
+void NeuralNet::addClasses(std::vector<std::string> classes){
+	(*this).classes = classes;
 }
 
 //initializes network: takes in the architecture of the network
@@ -30,7 +41,7 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 	//creates the appropriate amount of nodes in each layer
 	printf("Input Size Specified: %d\n", input);
 	for (int i = 0; i < input; i++){
-		Node n(learnRate);
+		Node n(learnRate, 0.1, 1);
 		n.name = "In: " + std::to_string(i);
 		(*this).input.push_back(n);
 	}
@@ -41,14 +52,14 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 		std::vector<Node> h;
 		(*this).hidden.push_back(h);
 		for (int i = 0; i < hidden[layer]; i++){
-			Node n(learnRate);
+			Node n(learnRate, 0.1, 1);
 			n.name = "h" + std::to_string(layer) + "-" + std::to_string(i);
 			(*this).hidden.at(layer).push_back(n);
 		}
 	}
 
 	for (int i = 0; i < output; i++){
-		Node n(learnRate);
+		Node n(learnRate, 0.1, 1);
 		n.name = "Out: " + std::to_string(i);
 		(*this).output.push_back(n);
 	}
@@ -72,12 +83,11 @@ void NeuralNet::connectNetwork(){
 	//does not support no hidden layers
 	for (int layer = 0; layer < hidden.size(); layer++){
 		if (layer + 1 < hidden.size()){
-			for (int nLayer = layer + 1; nLayer < hidden.size(); nLayer++){ // TODO this should be a variable
-				for (int i = 0; i < hidden.at(layer).size(); i++){
-					for (int j = 0; j < hidden.at(nLayer).size(); j++){
-						hidden.at(layer).at(i).addOutput(&hidden.at(nLayer).at(j));
-						hidden.at(nLayer).at(j).addInput(&hidden.at(layer).at(i));
-					}
+			int nLayer = layer + 1;
+			for (int i = 0; i < hidden.at(layer).size(); i++){
+				for (int j = 0; j < hidden.at(nLayer).size(); j++){
+					hidden.at(layer).at(i).addOutput(&hidden.at(nLayer).at(j));
+					hidden.at(nLayer).at(j).addInput(&hidden.at(layer).at(i));
 				}
 			}
 		}
@@ -142,7 +152,7 @@ void NeuralNet::trainANN(){
 		std::shuffle(trainingSet.begin(), trainingSet.end(), engine);
 
 		//set the correct number predicted to 100% (all of the examples that it will use)
-		int correctNum = numSetsTU;
+		int correctNum = 0;
 
 		//loop through each training example once
 		for (int train = 0; train < numSetsTU; train++){
@@ -153,28 +163,30 @@ void NeuralNet::trainANN(){
 
 			bool incorrect = false; // assume the correct result was predicted
 			//loop through all output nodes
-			for (int i = 0; i < output.size(); i++){
+		//	for (int i = 0; i < output.size(); i++){
 				int fired = getHighest();
 				double rawRes = output.at(fired).getOutput();//get raw output
 				int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
 
 				for (int i = 0; i < output.size(); i++){
 					double out = output.at(i).getOutput();
-					double err = (i == ansLoc ? 1 : 0) - out;
+					double err = (i == correctRes ? 1 : 0) - out;
 					output.at(i).addError(err);
 				}
 
-				if (fired == ansLoc){
+				if (fired == (int)trainingSet.at(train).at(ansLoc)){
 					//increment correct counter
+					correctNum++;
 				}
 
 				//incorrect = true; //then the prediction was incorrect
 				//double err = correctRes - rawRes; //calculate the error
 				//output.at(i).addError(err); //add the error to the output node
 				
-			}
+	//		}
 			
 			backPass();//and do the back propogation
+			adjustWeights();
 			
 			resetValues(); //reset the value, output and error at all nodes to reset network
 		}
@@ -183,6 +195,9 @@ void NeuralNet::trainANN(){
 //			printf("All test cases predicted!\n");
 //			break;
 //		}
+		if ((epoch + 1) % 500 == 0){
+			printf("Correct: %d/%d\n", correctNum, numSetsTU);
+		}
 
 	}
 	//print out how long it took to train
@@ -192,6 +207,29 @@ void NeuralNet::trainANN(){
 
 void NeuralNet::useANN(){
 	//ask print out stats
+	std::ofstream myfile;
+
+	time_t rawtime = std::time(nullptr);
+	struct tm b;
+	time(&rawtime);
+	b = *localtime(&rawtime);
+	char buff[80];
+	strftime(buff, 80, "%y_%m_%d_%H_%M_%S", &b);
+	
+
+	/*time_t rawTime;
+	tm timeInf;
+	errno_t res = localtime_s(&timeInf, &rawTime);
+	char buff[80];
+	asctime_s(buff, 80, &timeInf);*/
+	std::string s(buff);
+	myfile.open("../Results/Results-" + s + ".txt");
+	myfile << "Data Set: " << "TMP" << "\n";
+	myfile << "Training Set Size: " << numSetsTU << "\n";
+	myfile << "Learning Rate: " << learnRate << "\n";
+	myfile << "Momentum: " << "" << "\n";
+	myfile << "Learning Type: " << "" << "\n";
+	myfile << "Expected\tResult\tAccuracy\tRawResult\n";
 	printf("\nLearning rate: %f\n", learnRate);
 	printf("Network Type: %d-%d-%d\n\n", input.size(), hidden.at(0).size(), output.size());
 	printf("Results for inputs:\n");
@@ -199,19 +237,26 @@ void NeuralNet::useANN(){
 	for (std::vector<float> inp : trainingSet){
 		runANN(inp);
 		for (int i = 0; i < trainingSet.at(0).size() - 1; i++){
-			printf("%d", inp.at(i));
+			printf("%f ", inp.at(i));
 		}
 		printf("\t");
+
 		int result = getHighest();
+		if (result == -1){
+			printf("undecided\n");
+			result = 0;
+		}
 		double rawRes = output.at(result).getOutput();
 		
 
-		printf("Expected: %d   Result: %d   %f%% accuracy   ", inp.at(4), result, (rawRes * 100));
+		//printf("Expected: %d    Result: %s    %f%% accuracy\n", inp.at(ansLoc), (classes.at(result)).c_str(), ((rawRes)*100.0));
+		
+		myfile << inp.at(ansLoc) << "\t" << classes.at(result) << "\t" << (rawRes * 100) << "\t" << (rawRes * 100) << "\n";
+		std::cout << "Expected: " << inp.at(ansLoc) << "\tResult : " << classes.at(result) << "\t" << (rawRes * 100) << "% accuracy\n";
 		printf("Raw result: %f\n", rawRes);
 		resetValues();
-		
 	}
-
+	myfile.close();
 	//allow user to experiment with inputs
 	while (true){
 		printf("Enter q at any time to quit!\nEnter the 4 bits\n");
@@ -247,20 +292,20 @@ void NeuralNet::useANN(){
 			//convert to int array
 			std::vector<float> inp;
 			for (int i = 0; i < sizeof(inputArr); i++){
-				inp[i] = ((int)inputArr[i]) - 48;
+				inp.push_back(((int)inputArr[i]) - '0');//-48
 			}
 
 			//run the forward pass
 			runANN(inp);
 
 			//gather and display results
-			for (int i = 0; i < output.size(); i++){
-				double rawRes = output.at(i).getOutput();
-				int result = rawRes < 0.5 ? 0 : 1;
-				printf("Raw result: %f\n", rawRes);
-				printf("Result is %d with %f%% accuracy\n", result, result == 0 ? (((0.5 - rawRes) / 0.5) * 100) : (((rawRes - 0.5) / 0.5) * 100));
-				resetValues(); //reset the network
-			}
+			int fired = getHighest();
+			double rawRes = output.at(fired).getOutput();
+			std::cout << "\tResult : " << classes.at(fired) << "\t" << (rawRes * 100) << "% accuracy\n";
+			printf("Raw result: %f\n", rawRes);
+			//printf("Result is %d with %f%% accuracy\n", fired, (rawRes * 100));
+			resetValues(); //reset the network
+			
 		}
 
 	}
@@ -279,8 +324,6 @@ void NeuralNet::backPass(){
 			hidden.at(i).at(j).findError();
 		}
 	}
-	adjustWeights();
-
 }
 
 //adjusts the connection weights
@@ -343,7 +386,7 @@ void NeuralNet::printNetwork(){
 
 int NeuralNet::getHighest(){
 	int firedNode = -1;
-	double highestNode = 0;
+	double highestNode = -100;
 	for (int i = 0; i < output.size(); i++){
 		double rawRes = output.at(i).getOutput();//get raw output
 		if (rawRes > highestNode){

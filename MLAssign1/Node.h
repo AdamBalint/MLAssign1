@@ -7,6 +7,9 @@ class Node
 
 public:
 	Node(double);
+	Node(double, int);
+	Node(double, double);
+	Node(double, double, int);
 	Node();
 	~Node();
 	void addInput(Node*);
@@ -19,7 +22,9 @@ public:
 	void forward();
 	void setValue(double);
 	double sigmoid(double);
+	double tanhFunc(double);
 	double sigmoidDer(double);
+	double tanhDer(double);
 	void findError();
 	void addError(double);
 	void resetValues();
@@ -38,5 +43,7 @@ private:
 	double value = 0; //the value of this node
 	double err = 0; // the error of this node
 	double output; // the output of the node (inputs not sigmoided, the rest are)
+	double momentum;
+	int learningMethod = 0;
 };
 

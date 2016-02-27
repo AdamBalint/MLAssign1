@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #pragma once
 #include <iostream>
 #include <vector>
@@ -7,12 +8,18 @@
 #include <regex>
 #include <random>
 #include "Node.h"
+#include <fstream>
+#include <ctime>
+#include <time.h>
+#include <stdio.h>
 
 class NeuralNet
 {
 public:
-	NeuralNet();
-	NeuralNet(int, int, float);
+	NeuralNet(); // default constructor
+	NeuralNet(int, int, float);//epochs, # of data to use for training, learning rate
+	NeuralNet(int, float, float);//epochs, % of data to use for training, learning rate
+
 	~NeuralNet();
 	
 	void initANN(int, int*, int, int);
@@ -26,6 +33,7 @@ public:
 	void adjustWeights();
 	void resetValues();
 	void addTrainingData(std::vector<std::vector<float>>);
+	void addClasses(std::vector<std::string>);
 	int getHighest();
 
 private:
@@ -34,6 +42,9 @@ private:
 	std::vector<Node> output; //hold the output nodes
 	int numEpochs; //defines maximum number of epochs
 	std::vector<std::vector<float>> trainingSet; // first 4 actual bits, 5th is the parity bit
+	std::vector<std::vector<float>> testingSet;
+	std::vector<std::vector<float>> dataSet;
+	std::vector<std::string> classes;
 	int numSetsTU; //sets how many training sets to use
 	double learnRate; // sets the learning rate
 	int ansLoc;

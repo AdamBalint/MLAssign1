@@ -6,6 +6,21 @@ Node::Node(double learningRate)
 {
 }
 
+Node::Node(double learningRate, int learningMethod)
+	: learningRate(learningRate), learningMethod(learningMethod)
+{
+}
+
+Node::Node(double learningRate, double momentum)
+	: learningRate(learningRate), momentum(momentum)
+{
+}
+
+Node::Node(double learningRate, double momentumm, int learningMethod)
+	: learningRate(learningRate), momentum(momentum), learningMethod(learningMethod)
+{
+}
+
 //init node with default learning rate
 Node::Node()
 	: learningRate(0.2){
@@ -38,7 +53,13 @@ void Node::initWeights(){
 //updates the weights using the formula provided in the BP example slides
 void Node::updateWeights(){
 	for (int i = 0; i < inputs.size(); i++){
-		double errAtNode = err * sigmoidDer(value);
+		double derValue = 0;
+		if (learningMethod == 0)
+			derValue = sigmoidDer(value);
+		else if (learningMethod == 1)
+			derValue = tanhDer(value);
+
+		double errAtNode = err * derValue;
 		double adjust = learningRate * errAtNode * ((*inputs.at(i)).getOutput());
 		double nWeight = weights.at(i) + adjust;
 		weights.at(i) = nWeight;
@@ -98,7 +119,12 @@ double Node::getValue(){
 //pushes the value through the sigmoid and passes it to the nodes in this node's output
 //passes a pointer to itself so that the weight can be found
 void Node::forward(){
-	output = sigmoid(value);
+	if (learningMethod == 0)
+		output = sigmoid(value);
+	else if (learningMethod == 1)
+		output = tanhFunc(value);
+	//else
+		//put in rprop here
 	for (int i = 0; i < outputs.size(); i++){
 		outputs.at(i)->summationFunc(this, output);
 	}
@@ -119,6 +145,14 @@ double Node::sigmoid(double in){
 //defines the sigmoid derivative
 double Node::sigmoidDer(double in){
 	return sigmoid(in)*(1.0 - sigmoid(in));
+}
+
+double Node::tanhFunc(double in){
+	return tanh(in);
+}
+
+double Node::tanhDer(double in){
+	return 1 - (tanh(in)*tanh(in));
 }
 
 //sets the value of the node. Used to set the inputs
