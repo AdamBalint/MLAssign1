@@ -14,10 +14,9 @@ NeuralNet::NeuralNet(int epochs, int kValue, float lr)
 }
 
 NeuralNet::NeuralNet(int epochs, float trainToUse, float lr)
-	: numEpochs(epochs), learnRate(lr)
+	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr)
 {
 	srand(time(NULL)); //set a random seed
-	numSetsTU = floor(trainingSet.size()*trainToUse);
 	dataType = 0;
 }
 
@@ -28,6 +27,7 @@ NeuralNet::~NeuralNet()
 void NeuralNet::addData(std::vector<std::vector<float>> data){
 	ansLoc = data.at(0).size() - 1;
 	dataSet = data;
+	numSetsTU = floor(data.size()*trainingDataPercent);
 	auto engine = std::default_random_engine{};
 	std::shuffle(dataSet.begin(), dataSet.end(), engine);
 	if (dataType == 0){
@@ -223,6 +223,7 @@ void NeuralNet::trainCrossValidation(){
 	//loop through the number of epochs specified
 	std::vector<float> oldRes;
 	float oldResult = 100000;
+	int noImprovCount = 0;
 	for (int epoch = 0; epoch < numEpochs; epoch++){
 		printf("Epoch %d\n", epoch);
 
@@ -280,7 +281,23 @@ void NeuralNet::trainCrossValidation(){
 			totalCorrect += correctNum;
 		}
 		
-
+//		if (epoch % 5 == 0){
+			if (oldResult - newRes > 0){
+				printf("Change from error: %f\n\n", (oldResult - newRes));
+				oldResult = newRes;
+				noImprovCount = 0;
+			}
+			else if (noImprovCount > 30){
+				printf("Change from error: %f\n\n", ((oldResult - oldResult*0.01) - newRes));
+				int a;
+				std::cin >> a;
+				break;
+			}
+			else{
+				noImprovCount++;
+			}
+//		}
+		/*
 		if (oldRes.size() < 30){
 			oldRes.push_back(newRes);
 		}
@@ -299,8 +316,8 @@ void NeuralNet::trainCrossValidation(){
 				std::cin >> a;
 				break;
 			}
-		}
-		}
+		}*/
+	}
 
 		
 }

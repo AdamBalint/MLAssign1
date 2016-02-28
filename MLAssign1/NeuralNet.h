@@ -50,6 +50,7 @@ private:
 	std::vector<std::vector<float>> testingSet; // holds the testing set
 	std::vector<std::vector<float>> dataSet; //holds all the data
 	int dataType; // 0 - percentage, 1 - kfold
+	float trainingDataPercent;
 	int kSize = 0; // number of divisions
 	int numInSet; // number of pieces of data in each set
 	std::vector<std::string> classes;
