@@ -45,5 +45,6 @@ private:
 	double output; // the output of the node (inputs not sigmoided, the rest are)
 	double momentum;
 	int learningMethod = 0;
+	double lastChange = 0;
 };
 

@@ -17,8 +17,8 @@ class NeuralNet
 {
 public:
 	NeuralNet(); // default constructor
-	NeuralNet(int, int, float);//epochs, value of k to use for training, learning rate
-	NeuralNet(int, float, float);//epochs, % of data to use for training, learning rate
+	NeuralNet(int, int, float, float);//epochs, value of k to use for training, learning rate, momentum
+	NeuralNet(int, float, float, float);//epochs, % of data to use for training, learning rate, momentum
 
 	~NeuralNet();
 	
@@ -56,6 +56,7 @@ private:
 	std::vector<std::string> classes;
 	int numSetsTU; //sets how many training sets to use
 	double learnRate; // sets the learning rate
+	double momentum;
 	int ansLoc;
-
+	int learningMethod = 0;
 };

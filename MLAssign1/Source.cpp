@@ -380,7 +380,7 @@ int main(int argc, char* argv[]){
 	global.numSetsTU = 120; //set the number of training sets to use
 	global.learnRate = 0.15; //set the learning rate
 
-	NeuralNet nn = NeuralNet(500,10,0.01);
+	NeuralNet nn = NeuralNet(500,10,0.01, 0.2);
 	nn.addData(dp.getData());
 	nn.addClasses(dp.getClasses());
 	//specifies the number of hidden layers and nodes. 15 is the lowest I managed to get to work with a 0.15 learning rate

@@ -6,15 +6,15 @@ NeuralNet::NeuralNet()
 	srand(time(NULL)); //set a random seed
 }
 
-NeuralNet::NeuralNet(int epochs, int kValue, float lr) 
-	: numEpochs(epochs), kSize(kValue), learnRate(lr)
+NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum) 
+	: numEpochs(epochs), kSize(kValue), learnRate(lr), momentum(momentum)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 1;
 }
 
-NeuralNet::NeuralNet(int epochs, float trainToUse, float lr)
-	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr)
+NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum)
+	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr), momentum(momentum)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 0;
@@ -57,7 +57,7 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 	//creates the appropriate amount of nodes in each layer
 	printf("Input Size Specified: %d\n", input);
 	for (int i = 0; i < input; i++){
-		Node n(learnRate, 0.1, 1);
+		Node n(learnRate, momentum, learningMethod);
 		n.name = "In: " + std::to_string(i);
 		(*this).input.push_back(n);
 	}
@@ -68,14 +68,14 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 		std::vector<Node> h;
 		(*this).hidden.push_back(h);
 		for (int i = 0; i < hidden[layer]; i++){
-			Node n(learnRate, 0.1, 1);
+			Node n(learnRate, momentum, learningMethod);
 			n.name = "h" + std::to_string(layer) + "-" + std::to_string(i);
 			(*this).hidden.at(layer).push_back(n);
 		}
 	}
 
 	for (int i = 0; i < output; i++){
-		Node n(learnRate, 0.1, 1);
+		Node n(learnRate, momentum, learningMethod);
 		n.name = "Out: " + std::to_string(i);
 		(*this).output.push_back(n);
 	}

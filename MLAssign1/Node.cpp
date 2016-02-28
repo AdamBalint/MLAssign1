@@ -61,7 +61,9 @@ void Node::updateWeights(){
 
 		double errAtNode = err * derValue;
 		double adjust = learningRate * errAtNode * ((*inputs.at(i)).getOutput());
-		double nWeight = weights.at(i) + adjust;
+		double mom = momentum * lastChange;
+		lastChange = adjust + mom;
+		double nWeight = weights.at(i) + adjust + mom;
 		weights.at(i) = nWeight;
 	}
 
