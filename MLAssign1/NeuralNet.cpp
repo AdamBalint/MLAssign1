@@ -6,10 +6,11 @@ NeuralNet::NeuralNet()
 	srand(time(NULL)); //set a random seed
 }
 
-NeuralNet::NeuralNet(int epochs, int trainToUse, float lr) 
-	: numEpochs(epochs), numSetsTU(trainToUse), learnRate(lr)
+NeuralNet::NeuralNet(int epochs, int kValue, float lr) 
+	: numEpochs(epochs), kSize(kValue), learnRate(lr)
 {
 	srand(time(NULL)); //set a random seed
+	dataType = 1;
 }
 
 NeuralNet::NeuralNet(int epochs, float trainToUse, float lr)
@@ -17,15 +18,33 @@ NeuralNet::NeuralNet(int epochs, float trainToUse, float lr)
 {
 	srand(time(NULL)); //set a random seed
 	numSetsTU = floor(trainingSet.size()*trainToUse);
+	dataType = 0;
 }
 
 NeuralNet::~NeuralNet()
 {
 }
 
-void NeuralNet::addTrainingData(std::vector<std::vector<float>> data){
-	trainingSet = data;
-	ansLoc = trainingSet.at(0).size()-1;
+void NeuralNet::addData(std::vector<std::vector<float>> data){
+	ansLoc = data.at(0).size() - 1;
+	dataSet = data;
+	auto engine = std::default_random_engine{};
+	std::shuffle(dataSet.begin(), dataSet.end(), engine);
+	if (dataType == 0){
+		std::vector<std::vector<float>>::const_iterator start = data.begin();
+		std::vector<std::vector<float>>::const_iterator end = data.begin() + numSetsTU;
+		trainingSet = std::vector<std::vector<float>>(start, end);
+		std::vector<std::vector<float>>::const_iterator dataEnd = data.end();
+		testingSet = std::vector<std::vector<float>>(end, dataEnd);
+	}
+	else{
+		std::vector<std::vector<float>>::const_iterator start = data.begin();
+		std::vector<std::vector<float>>::const_iterator end = data.end();
+		trainingSet = std::vector<std::vector<float>>(start, end);
+		numInSet = trainingSet.size() / kSize;
+	}
+
+
 }
 
 void NeuralNet::addClasses(std::vector<std::string> classes){
@@ -34,9 +53,6 @@ void NeuralNet::addClasses(std::vector<std::string> classes){
 
 //initializes network: takes in the architecture of the network
 void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output){
-	//asks for user to enter learning rate
-//	printf("Please enter a learning rate (as decimal): ");
-//	std::cin >> learnRate;
 
 	//creates the appropriate amount of nodes in each layer
 	printf("Input Size Specified: %d\n", input);
@@ -139,6 +155,13 @@ void NeuralNet::runANN(std::vector<float> values){
 
 //loops through the training examples, and does the correction logic
 void NeuralNet::trainANN(){
+	if (dataType == 0)
+		trainHoldout();
+	else if (dataType == 1)
+		trainCrossValidation();
+}
+
+void NeuralNet::trainHoldout(){
 
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
@@ -147,6 +170,7 @@ void NeuralNet::trainANN(){
 			printf("Epoch: %d/%d\n", epoch + 1, numEpochs);
 			//printNetwork();
 		}
+
 		//randomly shuffle the training examples
 		auto engine = std::default_random_engine{};
 		std::shuffle(trainingSet.begin(), trainingSet.end(), engine);
@@ -162,39 +186,29 @@ void NeuralNet::trainANN(){
 
 
 			bool incorrect = false; // assume the correct result was predicted
-			//loop through all output nodes
-		//	for (int i = 0; i < output.size(); i++){
-				int fired = getHighest();
-				double rawRes = output.at(fired).getOutput();//get raw output
-				int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
+			int fired = getHighest();
+			double rawRes = output.at(fired).getOutput();//get raw output
+			int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
 
-				for (int i = 0; i < output.size(); i++){
-					double out = output.at(i).getOutput();
-					double err = (i == correctRes ? 1 : 0) - out;
-					output.at(i).addError(err);
-				}
+			for (int i = 0; i < output.size(); i++){
+				double out = output.at(i).getOutput();
+				double err = (i == correctRes ? 1 : 0) - out;
+				output.at(i).addError(err);
+			}
 
-				if (fired == (int)trainingSet.at(train).at(ansLoc)){
-					//increment correct counter
-					correctNum++;
-				}
+			if (fired == (int)trainingSet.at(train).at(ansLoc)){
+				//increment correct counter
+				correctNum++;
+			}
 
-				//incorrect = true; //then the prediction was incorrect
-				//double err = correctRes - rawRes; //calculate the error
-				//output.at(i).addError(err); //add the error to the output node
-				
-	//		}
-			
+
+
 			backPass();//and do the back propogation
 			adjustWeights();
-			
+
 			resetValues(); //reset the value, output and error at all nodes to reset network
 		}
-		//printf("Correct: %d/%d\n", correctNum, global.numSetsTU); //used to print network for debugging
-//		if (correctNum >= numSetsTU * 0.9){ // if all predicted then break
-//			printf("All test cases predicted!\n");
-//			break;
-//		}
+
 		if ((epoch + 1) % 500 == 0){
 			printf("Correct: %d/%d\n", correctNum, numSetsTU);
 		}
@@ -202,6 +216,101 @@ void NeuralNet::trainANN(){
 	}
 	//print out how long it took to train
 	printf("Time to train: %f\n", ((std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000)));
+}
+
+void NeuralNet::trainCrossValidation(){
+	std::clock_t start = std::clock(); // get timer to check how long it takes to train
+	//loop through the number of epochs specified
+	std::vector<float> oldRes;
+	float oldResult = 100000;
+	for (int epoch = 0; epoch < numEpochs; epoch++){
+		printf("Epoch %d\n", epoch);
+
+		int totalCorrect = 0;
+		float newRes = 0;
+		for (int i = 0; i < kSize; i++){
+			printf("\tK: %d\n", i);
+
+			//set the correct number predicted to 100% (all of the examples that it will use)
+			int correctNum = 0;
+			float squaredError = 0;
+			int numElements = 0;
+			//loop through each training example once
+			for (int train = 0; train < trainingSet.size(); train++){
+				if (i == kSize){
+					if (train >= i*numInSet)
+						continue;
+				}
+				else
+					if (train >= i*numInSet && train < ((i + 1) % kSize)*numInSet)
+						continue;
+
+				numElements++;
+				//do the forward pass
+				runANN(trainingSet.at(train));
+
+
+				bool incorrect = false; // assume the correct result was predicted
+				//loop through all output nodes
+				int fired = getHighest();
+				double rawRes = output.at(fired).getOutput();//get raw output
+				int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
+
+				
+
+				for (int i = 0; i < output.size(); i++){
+					double out = output.at(i).getOutput();
+					double err = (i == correctRes ? 1 : 0) - out;
+					output.at(i).addError(err);
+					squaredError += pow(err, 2);
+				}
+
+				if (fired == (int)trainingSet.at(train).at(ansLoc)){
+					correctNum++;
+				}
+
+				backPass();//and do the back propogation
+				adjustWeights();
+
+				
+
+				resetValues(); //reset the value, output and error at all nodes to reset network
+			}
+			newRes += squaredError / numElements;
+			totalCorrect += correctNum;
+		}
+		
+
+		if (oldRes.size() < 30){
+			oldRes.push_back(newRes);
+		}
+		else{
+			oldResult = average(oldRes);
+
+			if (oldResult - newRes > 0){
+				printf("Change from avg error: %f\n\n", (oldResult - newRes));
+				
+				oldRes.erase(oldRes.begin());
+				oldRes.push_back(newRes);
+			}
+			else{
+				printf("Change from avg error: %f\n\n", (oldResult - newRes));
+				int a;
+				std::cin >> a;
+				break;
+			}
+		}
+		}
+
+		
+}
+
+float NeuralNet::average(std::vector<float> in){
+	float sum = 0;
+	for (int i = 0; i < in.size(); i++){
+		sum += in.at(i);
+	}
+	return sum / in.size();
 }
 
 
@@ -248,14 +357,31 @@ void NeuralNet::useANN(){
 		}
 		double rawRes = output.at(result).getOutput();
 		
-
-		//printf("Expected: %d    Result: %s    %f%% accuracy\n", inp.at(ansLoc), (classes.at(result)).c_str(), ((rawRes)*100.0));
-		
-		myfile << inp.at(ansLoc) << "\t" << classes.at(result) << "\t" << (rawRes * 100) << "\t" << (rawRes * 100) << "\n";
+		myfile << inp.at(ansLoc) << "\t" << classes.at(result) << "\t" << (rawRes * 100) << "\t" << rawRes << "\tTrain\n";
 		std::cout << "Expected: " << inp.at(ansLoc) << "\tResult : " << classes.at(result) << "\t" << (rawRes * 100) << "% accuracy\n";
 		printf("Raw result: %f\n", rawRes);
 		resetValues();
 	}
+	for (std::vector<float> inp : testingSet){
+		runANN(inp);
+		for (int i = 0; i < testingSet.at(0).size() - 1; i++){
+			printf("%f ", inp.at(i));
+		}
+		printf("\t");
+
+		int result = getHighest();
+		if (result == -1){
+			printf("undecided\n");
+			result = 0;
+		}
+		double rawRes = output.at(result).getOutput();
+
+		myfile << inp.at(ansLoc) << "\t" << classes.at(result) << "\t" << (rawRes * 100) << "\t" << rawRes << "\tTest\n";
+		std::cout << "Expected: " << inp.at(ansLoc) << "\tResult : " << classes.at(result) << "\t" << (rawRes * 100) << "% accuracy\n";
+		printf("Raw result: %f\n", rawRes);
+		resetValues();
+	}
+
 	myfile.close();
 	//allow user to experiment with inputs
 	while (true){
