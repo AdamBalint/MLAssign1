@@ -16,8 +16,8 @@ Node::Node(double learningRate, double momentum)
 {
 }
 
-Node::Node(double learningRate, double momentumm, int learningMethod)
-	: learningRate(learningRate), momentum(momentum), learningMethod(learningMethod)
+Node::Node(double learningRate, double momentumm, int learningMethod, bool single)
+	: learningRate(learningRate), momentum(momentum), learningMethod(learningMethod), single(single)
 {
 }
 
@@ -47,26 +47,99 @@ void Node::initWeights(){
 		if (abs(weight) < 0.001)
 			weight *= 10;
 		weights.push_back(weight);
+		if (!single){
+			prevGradients.push_back(0.0001);
+			deltaWeights.push_back(0.0001);
+			sumGradients.push_back(0);
+		}
+
 	}
 }
 
 //updates the weights using the formula provided in the BP example slides
 void Node::updateWeights(){
+	if (single)
+		singleExampleWeightUpdate();
+	else
+		rpropWeightUpdate();
+
+}
+
+void Node::singleExampleWeightUpdate(){
+	for (int i = 0; i < inputs.size(); i++){
+			double derValue = 0;
+			if (learningMethod == 0)
+				derValue = sigmoidDer(value);
+			else if (learningMethod == 1)
+				derValue = tanhDer(value);
+			double errAtNode = err * derValue;
+			double adjust = learningRate * errAtNode * ((*inputs.at(i)).getOutput());
+			double mom = momentum * lastChange;
+			lastChange = adjust + mom;
+			double nWeight = weights.at(i) + adjust + mom;
+			weights.at(i) = nWeight;
+	}
+}
+
+void Node::rpropWeightUpdate(){
+	double npos = 1.2, nneg = 0.55;
+	double deltamax = 50, deltamin = 0.00000001;
+	double derValue = 0;
+	if (learningMethod == 0)
+		derValue = sigmoidDer(value);
+	else if (learningMethod == 1)
+		derValue = tanhDer(value);
+
+	for (int i = 0; i < inputs.size(); i++){
+		
+		double gradient = sumGradients.at(i);
+		double delta;
+		bool skipUpdate = false;
+		switch (getSign(gradient * prevGradients.at(i))){
+		case 1:
+			
+			delta = deltaWeights.at(i) * getSign(gradient);
+			deltaWeights.at(i) = fmin(deltaWeights.at(i) * npos, deltamax);
+//			printf("increase delta\n");
+			break;
+		case -1:
+			deltaWeights.at(i) = fmax(deltaWeights.at(i) * nneg, deltamin);
+			gradient = 0;
+			skipUpdate = true;
+//			printf("decrease delta\n");
+			break;
+		case 0:
+//			printf("nothing\n");
+			delta = deltaWeights.at(i) * getSign(gradient);
+			break;
+		}
+		if (!skipUpdate){
+			weights.at(i) = weights.at(i) - delta;
+			prevGradients.at(i) = gradient;
+		}
+	}
+}
+
+int Node::getSign(double in){
+	if (in < 0)
+		return -1;
+	else if (in > 0)
+		return 1;
+	
+	return 0;
+}
+
+void Node::sumGradient(){
 	for (int i = 0; i < inputs.size(); i++){
 		double derValue = 0;
 		if (learningMethod == 0)
 			derValue = sigmoidDer(value);
 		else if (learningMethod == 1)
 			derValue = tanhDer(value);
-
-		double errAtNode = err * derValue;
-		double adjust = learningRate * errAtNode * ((*inputs.at(i)).getOutput());
-		double mom = momentum * lastChange;
-		lastChange = adjust + mom;
-		double nWeight = weights.at(i) + adjust + mom;
-		weights.at(i) = nWeight;
+		
+		double gradient = -err * derValue * ((*inputs.at(i)).getOutput());
+		sumGradients.at(i) += gradient;
 	}
-
 }
 
 //finds the error contribution of all input nodes, and adds to running total in input
@@ -169,7 +242,14 @@ double Node::getOutput(){
 
 //resets the node to be used again
 void Node::resetValues(){
-	value = 0;
-	err = 0;
+		value = 0;
+		err = 0;
 	output = 0;
+}
+void Node::resetSumGradients(){
+	std::vector<double> n;
+	for (int i = 0; i < inputs.size(); i++){
+		n.push_back(0);
+	}
+	sumGradients = n;
 }
