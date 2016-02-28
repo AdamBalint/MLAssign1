@@ -6,15 +6,15 @@ NeuralNet::NeuralNet()
 	srand(time(NULL)); //set a random seed
 }
 
-NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum) 
-	: numEpochs(epochs), kSize(kValue), learnRate(lr), momentum(momentum)
+NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, bool single) 
+	: numEpochs(epochs), kSize(kValue), learnRate(lr), momentum(momentum), single(single)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 1;
 }
 
-NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum)
-	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr), momentum(momentum)
+NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, bool single)
+	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr), momentum(momentum), single(single)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 0;
@@ -57,7 +57,7 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 	//creates the appropriate amount of nodes in each layer
 	printf("Input Size Specified: %d\n", input);
 	for (int i = 0; i < input; i++){
-		Node n(learnRate, momentum, learningMethod);
+		Node n(learnRate, momentum, learningMethod, single);
 		n.name = "In: " + std::to_string(i);
 		(*this).input.push_back(n);
 	}
@@ -68,14 +68,14 @@ void NeuralNet::initANN(int input, int* hidden, int numHiddenLayers, int output)
 		std::vector<Node> h;
 		(*this).hidden.push_back(h);
 		for (int i = 0; i < hidden[layer]; i++){
-			Node n(learnRate, momentum, learningMethod);
+			Node n(learnRate, momentum, learningMethod, single);
 			n.name = "h" + std::to_string(layer) + "-" + std::to_string(i);
 			(*this).hidden.at(layer).push_back(n);
 		}
 	}
 
 	for (int i = 0; i < output; i++){
-		Node n(learnRate, momentum, learningMethod);
+		Node n(learnRate, momentum, learningMethod, single);
 		n.name = "Out: " + std::to_string(i);
 		(*this).output.push_back(n);
 	}
@@ -166,10 +166,10 @@ void NeuralNet::trainHoldout(){
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
 	for (int epoch = 0; epoch < numEpochs; epoch++){
-		if ((epoch + 1) % 500 == 0){ //only print out every 500 epochs for speed
+		//if ((epoch + 1) % 500 == 0){ //only print out every 500 epochs for speed
 			printf("Epoch: %d/%d\n", epoch + 1, numEpochs);
 			//printNetwork();
-		}
+	//	}
 
 		//randomly shuffle the training examples
 		auto engine = std::default_random_engine{};
@@ -202,17 +202,24 @@ void NeuralNet::trainHoldout(){
 			}
 
 
-
 			backPass();//and do the back propogation
-			adjustWeights();
+			if (single){
+				adjustWeights();
+			}
+			else{
+				findGradients();
+			}
 
 			resetValues(); //reset the value, output and error at all nodes to reset network
 		}
-
-		if ((epoch + 1) % 500 == 0){
-			printf("Correct: %d/%d\n", correctNum, numSetsTU);
+		if (!single){
+			adjustWeights();
+			resetGradients();
 		}
-
+//		if ((epoch + 1) % 500 == 0){
+			printf("Correct: %d/%d\n", correctNum, numSetsTU);
+//		}
+		
 	}
 	//print out how long it took to train
 	printf("Time to train: %f\n", ((std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000)));
@@ -230,7 +237,7 @@ void NeuralNet::trainCrossValidation(){
 		int totalCorrect = 0;
 		float newRes = 0;
 		for (int i = 0; i < kSize; i++){
-			printf("\tK: %d\n", i);
+			printf("\tK: %d: ", i);
 
 			//set the correct number predicted to 100% (all of the examples that it will use)
 			int correctNum = 0;
@@ -238,7 +245,7 @@ void NeuralNet::trainCrossValidation(){
 			int numElements = 0;
 			//loop through each training example once
 			for (int train = 0; train < trainingSet.size(); train++){
-				if (i == kSize){
+				if (i == kSize-1){
 					if (train >= i*numInSet)
 						continue;
 				}
@@ -269,16 +276,24 @@ void NeuralNet::trainCrossValidation(){
 				if (fired == (int)trainingSet.at(train).at(ansLoc)){
 					correctNum++;
 				}
-
 				backPass();//and do the back propogation
-				adjustWeights();
-
+				if (single){
+					adjustWeights();
+				}
+				else{
+					findGradients();
+				}
 				
 
 				resetValues(); //reset the value, output and error at all nodes to reset network
 			}
 			newRes += squaredError / numElements;
 			totalCorrect += correctNum;
+			printf("Correct: %d/%d\n", correctNum, numElements);
+			if (!single){
+				adjustWeights();
+				resetGradients();
+			}
 		}
 		
 //		if (epoch % 5 == 0){
@@ -294,6 +309,7 @@ void NeuralNet::trainCrossValidation(){
 				break;
 			}
 			else{
+				printf("Change from error: -%f\n\n", (oldResult - newRes));
 				noImprovCount++;
 			}
 //		}
@@ -471,17 +487,37 @@ void NeuralNet::backPass(){
 
 //adjusts the connection weights
 void NeuralNet::adjustWeights(){
-
 	for (int i = 0; i < hidden.size(); i++){
 		for (int j = 0; j < hidden.at(i).size(); j++){
 			hidden.at(i).at(j).updateWeights();
 		}
 	}
-
 	for (int i = 0; i < output.size(); i++){
 		output.at(i).updateWeights();
 	}
+}
 
+//adjusts the connection weights
+void NeuralNet::findGradients(){
+	for (int i = 0; i < hidden.size(); i++){
+		for (int j = 0; j < hidden.at(i).size(); j++){
+			hidden.at(i).at(j).sumGradient();
+		}
+	}
+	for (int i = 0; i < output.size(); i++){
+		output.at(i).sumGradient();
+	}
+}
+
+void NeuralNet::resetGradients(){
+	for (int i = 0; i < hidden.size(); i++){
+		for (int j = 0; j < hidden.at(i).size(); j++){
+			hidden.at(i).at(j).resetSumGradients();
+		}
+	}
+	for (int i = 0; i < output.size(); i++){
+		output.at(i).resetSumGradients();
+	}
 }
 
 //resets the network to use again

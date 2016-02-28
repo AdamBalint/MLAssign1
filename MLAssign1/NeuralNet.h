@@ -17,8 +17,8 @@ class NeuralNet
 {
 public:
 	NeuralNet(); // default constructor
-	NeuralNet(int, int, float, float);//epochs, value of k to use for training, learning rate, momentum
-	NeuralNet(int, float, float, float);//epochs, % of data to use for training, learning rate, momentum
+	NeuralNet(int, int, float, float, bool);//epochs, value of k to use for training, learning rate, momentum, single update
+	NeuralNet(int, float, float, float, bool);//epochs, % of data to use for training, learning rate, momentum, single update
 
 	~NeuralNet();
 	
@@ -41,6 +41,8 @@ private:
 	void trainCrossValidation();
 	float getSquaredError(int);
 	float average(std::vector<float>);
+	void findGradients();
+	void resetGradients();
 
 	std::vector<Node> input; // holds the input nodes
 	std::vector<std::vector<Node>> hidden; //hold the hidden layer nodes
@@ -58,5 +60,6 @@ private:
 	double learnRate; // sets the learning rate
 	double momentum;
 	int ansLoc;
-	int learningMethod = 0;
+	int learningMethod = 1; // 0 - sigmoid, 1 - tanh
+	bool single; // true - single example backprop, false - batch backprop(rprop)
 };
