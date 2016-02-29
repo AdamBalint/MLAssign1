@@ -4,6 +4,13 @@
 NeuralNet::NeuralNet()
 {
 	srand(time(NULL)); //set a random seed
+	time_t rawtime = std::time(nullptr);
+	struct tm b;
+	time(&rawtime);
+	b = *localtime(&rawtime);
+	char buff[80];
+	strftime(buff, 80, "%y_%m_%d_%H_%M_%S", &b);
+	timestamp = std::string(buff);
 }
 
 NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, bool single) 
@@ -11,6 +18,13 @@ NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, bool sing
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 1;
+	time_t rawtime = std::time(nullptr);
+	struct tm b;
+	time(&rawtime);
+	b = *localtime(&rawtime);
+	char buff[80];
+	strftime(buff, 80, "%y_%m_%d_%H_%M_%S", &b);
+	timestamp = std::string(buff);
 }
 
 NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, bool single)
@@ -18,6 +32,13 @@ NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, boo
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 0;
+	time_t rawtime = std::time(nullptr);
+	struct tm b;
+	time(&rawtime);
+	b = *localtime(&rawtime);
+	char buff[80];
+	strftime(buff, 80, "%y_%m_%d_%H_%M_%S", &b);
+	timestamp = std::string(buff);
 }
 
 NeuralNet::~NeuralNet()
@@ -162,6 +183,8 @@ void NeuralNet::trainANN(){
 }
 
 void NeuralNet::trainHoldout(){
+	std::ofstream myfile;
+	myfile.open("../Results/EpochSummary-" + timestamp + ".txt");
 
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
@@ -223,9 +246,15 @@ void NeuralNet::trainHoldout(){
 	}
 	//print out how long it took to train
 	printf("Time to train: %f\n", ((std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000)));
+	myfile.flush();
+	myfile.close();
 }
 
 void NeuralNet::trainCrossValidation(){
+	std::ofstream myfile;
+	myfile.open("../Results/EpochSummary-" + timestamp + ".txt");
+
+
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
 	std::vector<float> oldRes;
@@ -312,6 +341,8 @@ void NeuralNet::trainCrossValidation(){
 				printf("Change from error: -%f\n\n", (oldResult - newRes));
 				noImprovCount++;
 			}
+
+//**************************log data for each epoch here************************************
 //		}
 		/*
 		if (oldRes.size() < 30){
@@ -334,7 +365,8 @@ void NeuralNet::trainCrossValidation(){
 			}
 		}*/
 	}
-
+	myfile.flush();
+	myfile.close();
 		
 }
 
@@ -351,12 +383,7 @@ void NeuralNet::useANN(){
 	//ask print out stats
 	std::ofstream myfile;
 
-	time_t rawtime = std::time(nullptr);
-	struct tm b;
-	time(&rawtime);
-	b = *localtime(&rawtime);
-	char buff[80];
-	strftime(buff, 80, "%y_%m_%d_%H_%M_%S", &b);
+	
 	
 
 	/*time_t rawTime;
@@ -364,8 +391,8 @@ void NeuralNet::useANN(){
 	errno_t res = localtime_s(&timeInf, &rawTime);
 	char buff[80];
 	asctime_s(buff, 80, &timeInf);*/
-	std::string s(buff);
-	myfile.open("../Results/Results-" + s + ".txt");
+	
+	myfile.open("../Results/FinalClassification-" + timestamp + ".txt");
 	myfile << "Data Set: " << "TMP" << "\n";
 	myfile << "Training Set Size: " << numSetsTU << "\n";
 	myfile << "Learning Rate: " << learnRate << "\n";
