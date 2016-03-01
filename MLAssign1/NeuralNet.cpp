@@ -13,8 +13,8 @@ NeuralNet::NeuralNet()
 	timestamp = std::string(buff);
 }
 
-NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, bool single) 
-	: numEpochs(epochs), kSize(kValue), learnRate(lr), momentum(momentum), single(single)
+NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, int activationFunc, bool single) 
+	: numEpochs(epochs), kSize(kValue), learnRate(lr), momentum(momentum), learningMethod(activationFunc), single(single)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 1;
@@ -27,8 +27,8 @@ NeuralNet::NeuralNet(int epochs, int kValue, float lr, float momentum, bool sing
 	timestamp = std::string(buff);
 }
 
-NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, bool single)
-	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr), momentum(momentum), single(single)
+NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, int activationFunc, bool single)
+	: numEpochs(epochs), trainingDataPercent(trainToUse), learnRate(lr), momentum(momentum), learningMethod(activationFunc), single(single)
 {
 	srand(time(NULL)); //set a random seed
 	dataType = 0;
@@ -43,6 +43,10 @@ NeuralNet::NeuralNet(int epochs, float trainToUse, float lr, float momentum, boo
 
 NeuralNet::~NeuralNet()
 {
+}
+
+void NeuralNet::storeDatasetName(std::string name){
+	dataSetName = name;
 }
 
 void NeuralNet::addData(std::vector<std::vector<float>> data){
@@ -185,6 +189,7 @@ void NeuralNet::trainANN(){
 void NeuralNet::trainHoldout(){
 	std::ofstream myfile;
 	myfile.open("../Results/EpochSummary-" + timestamp + ".txt");
+	myfile << "Epoch\tsum error squared(train)\tsum error squared(test)\tavg error squared(train)\tavg error squared(test)\tpercent correct(train)\tpercent correct(test)\n";
 
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
@@ -199,11 +204,17 @@ void NeuralNet::trainHoldout(){
 		std::shuffle(trainingSet.begin(), trainingSet.end(), engine);
 
 		//set the correct number predicted to 100% (all of the examples that it will use)
-		int correctNum = 0;
+
+		int correctNumTrain = 0;
+		int correctNumTest = 0;
+		double squareErrorTrain = 0;
+		int numInSquareErrorTrain = 0;
+		double squareErrorTest = 0;
+		int numInSquareErrorTest = 0;
 
 		//loop through each training example once
-		for (int train = 0; train < numSetsTU; train++){
-
+		for (int train = 0; train < trainingSet.size(); train++){
+			numInSquareErrorTrain++;
 			//do the forward pass
 			runANN(trainingSet.at(train));
 
@@ -217,11 +228,12 @@ void NeuralNet::trainHoldout(){
 				double out = output.at(i).getOutput();
 				double err = (i == correctRes ? 1 : 0) - out;
 				output.at(i).addError(err);
+				squareErrorTrain += pow(err, 2);
 			}
 
 			if (fired == (int)trainingSet.at(train).at(ansLoc)){
 				//increment correct counter
-				correctNum++;
+				correctNumTrain++;
 			}
 
 
@@ -235,14 +247,43 @@ void NeuralNet::trainHoldout(){
 
 			resetValues(); //reset the value, output and error at all nodes to reset network
 		}
+
+
 		if (!single){
 			adjustWeights();
 			resetGradients();
 		}
 //		if ((epoch + 1) % 500 == 0){
-			printf("Correct: %d/%d\n", correctNum, numSetsTU);
 //		}
 		
+			for (int test = 0; test < testingSet.size(); test++){
+				numInSquareErrorTest++;
+				runANN(testingSet.at(test));
+
+				bool incorrect = false; // assume the correct result was predicted
+				int fired = getHighest();
+				double rawRes = output.at(fired).getOutput();//get raw output
+				int correctRes = testingSet.at(test).at(ansLoc); // get correct result
+
+				for (int i = 0; i < output.size(); i++){
+					double out = output.at(i).getOutput();
+					double err = (i == correctRes ? 1 : 0) - out;
+					output.at(i).addError(err);
+					squareErrorTest += pow(err, 2);
+				}
+
+				if (fired == (int)testingSet.at(test).at(ansLoc)){
+					//increment correct counter
+					correctNumTest++;
+				}
+				resetValues(); //reset the value, output and error at all nodes to reset network
+			}
+			printf("Correct: Train: %d/%d\tTest: %d/%d\n", correctNumTrain, numInSquareErrorTrain, correctNumTest, numInSquareErrorTest);
+			
+			//**************************log data for each fold here************************************
+			myfile << epoch << "-" << epoch << "\t" << squareErrorTrain << "\t" << squareErrorTest << "\t" << (squareErrorTrain / numInSquareErrorTrain);
+			myfile << "\t" << (squareErrorTest / numInSquareErrorTest) << "\t" << (((double)correctNumTrain) / numInSquareErrorTrain) << "\t" << (((double)correctNumTest) / numInSquareErrorTest) << "\n";
+
 	}
 	//print out how long it took to train
 	printf("Time to train: %f\n", ((std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000)));
@@ -253,6 +294,7 @@ void NeuralNet::trainHoldout(){
 void NeuralNet::trainCrossValidation(){
 	std::ofstream myfile;
 	myfile.open("../Results/EpochSummary-" + timestamp + ".txt");
+	myfile << "Epoch\tsum error squared(train)\tsum error squared(test)\tavg error squared(train)\tavg error squared(test)\tpercent correct(train)\tpercent correct(test)\n";
 
 
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
@@ -263,26 +305,35 @@ void NeuralNet::trainCrossValidation(){
 	for (int epoch = 0; epoch < numEpochs; epoch++){
 		printf("Epoch %d\n", epoch);
 
+		auto engine = std::default_random_engine{};
+		std::shuffle(trainingSet.begin(), trainingSet.end(), engine);
+
 		int totalCorrect = 0;
 		float newRes = 0;
-		for (int i = 0; i < kSize; i++){
-			printf("\tK: %d: ", i);
+		for (int k = 0; k < kSize; k++){
+			
+			printf("\tK: %d: ", k);
 
 			//set the correct number predicted to 100% (all of the examples that it will use)
-			int correctNum = 0;
-			float squaredError = 0;
-			int numElements = 0;
+			int correctNumTrain = 0;
+			int correctNumTest = 0;
+			double squareErrorTrain = 0;
+			int numInSquareErrorTrain = 0;
+			double squareErrorTest = 0;
+			int numInSquareErrorTest = 0;
+
 			//loop through each training example once
 			for (int train = 0; train < trainingSet.size(); train++){
-				if (i == kSize-1){
-					if (train >= i*numInSet)
-						continue;
+				bool inTest = false;
+				if (k == kSize - 1){
+					if (train >= k*numInSet)
+						inTest = true;
 				}
 				else
-					if (train >= i*numInSet && train < ((i + 1) % kSize)*numInSet)
-						continue;
+					if (train >= k*numInSet && train < ((k + 1) % kSize)*numInSet)
+						inTest = true;
 
-				numElements++;
+				//numInSquareError++;
 				//do the forward pass
 				runANN(trainingSet.at(train));
 
@@ -293,36 +344,52 @@ void NeuralNet::trainCrossValidation(){
 				double rawRes = output.at(fired).getOutput();//get raw output
 				int correctRes = trainingSet.at(train).at(ansLoc); // get correct result
 
-				
-
 				for (int i = 0; i < output.size(); i++){
 					double out = output.at(i).getOutput();
 					double err = (i == correctRes ? 1 : 0) - out;
 					output.at(i).addError(err);
-					squaredError += pow(err, 2);
+					if (inTest)
+						squareErrorTest += pow(err, 2);
+					else
+						squareErrorTrain += pow(err, 2);
 				}
 
 				if (fired == (int)trainingSet.at(train).at(ansLoc)){
-					correctNum++;
+					if (inTest)
+						correctNumTest++;
+					else
+						correctNumTrain++;
 				}
-				backPass();//and do the back propogation
-				if (single){
-					adjustWeights();
+
+				if (!inTest){
+					numInSquareErrorTrain++;
+					backPass();//and do the back propogation
+					if (single){
+						adjustWeights();
+					}
+					else{
+						findGradients();
+					}
 				}
 				else{
-					findGradients();
+					numInSquareErrorTest++;
 				}
 				
 
+
 				resetValues(); //reset the value, output and error at all nodes to reset network
 			}
-			newRes += squaredError / numElements;
-			totalCorrect += correctNum;
-			printf("Correct: %d/%d\n", correctNum, numElements);
+			newRes += squareErrorTrain / numInSquareErrorTrain;
+			//totalCorrect += correctNum;
+			printf("Correct: Train: %d/%d\tTest: %d/%d\n", correctNumTrain, numInSquareErrorTrain, correctNumTest, numInSquareErrorTest);
 			if (!single){
 				adjustWeights();
 				resetGradients();
 			}
+
+			//**************************log data for each fold here************************************
+			myfile << epoch << "-" << k << "\t" << squareErrorTrain << "\t" << squareErrorTest << "\t" << (squareErrorTrain / numInSquareErrorTrain);
+			myfile << "\t" << (squareErrorTest / numInSquareErrorTest) << "\t" << (((double)correctNumTrain) / numInSquareErrorTrain) << "\t" << (((double)correctNumTest) / numInSquareErrorTest) <<"\n";
 		}
 		
 //		if (epoch % 5 == 0){
@@ -342,7 +409,7 @@ void NeuralNet::trainCrossValidation(){
 				noImprovCount++;
 			}
 
-//**************************log data for each epoch here************************************
+
 //		}
 		/*
 		if (oldRes.size() < 30){
@@ -391,17 +458,28 @@ void NeuralNet::useANN(){
 	errno_t res = localtime_s(&timeInf, &rawTime);
 	char buff[80];
 	asctime_s(buff, 80, &timeInf);*/
-	
-	myfile.open("../Results/FinalClassification-" + timestamp + ".txt");
-	myfile << "Data Set: " << "TMP" << "\n";
-	myfile << "Training Set Size: " << numSetsTU << "\n";
-	myfile << "Learning Rate: " << learnRate << "\n";
-	myfile << "Momentum: " << "" << "\n";
-	myfile << "Learning Type: " << "" << "\n";
-	myfile << "Expected\tResult\tAccuracy\tRawResult\n";
 	printf("\nLearning rate: %f\n", learnRate);
 	printf("Network Type: %d-%d-%d\n\n", input.size(), hidden.at(0).size(), output.size());
 	printf("Results for inputs:\n");
+
+
+	myfile.open("../Results/FinalClassification-" + timestamp + ".txt");
+	myfile << "Data Set: " << dataSetName << "\n";
+	bool kfld = trainingSet.size() == 0;
+	myfile << "Data Partitioning: " << (kfld ? "K Fold" : "Holdout");
+	if (!kfld){
+		myfile << "Training Set Size: " << trainingSet.size() << "\n";
+		myfile << "Testing Set Size: " << testingSet.size() << "\n";
+	}
+	else
+		myfile << "Number of folds: " << kSize << "\n";
+	myfile << "Learning Rate: " << learnRate << "\n";
+	myfile << "Momentum: " << momentum << "\n";
+	myfile << "Activation Function: " << (learningMethod == 0 ? "sigmoid":"tanh") << "\n";
+	myfile << "Network: " << input.size() << "-" << hidden.at(0).size() << "-" << output.size() << "\n";
+	myfile << "Training type: " << (single ? "Live Training":"Batch Training")<< "\n";
+	myfile << "\nExpected\tResult\tAccuracy\tRawResult\n";
+	
 	//go through and print out all training examples and info
 	for (std::vector<float> inp : trainingSet){
 		runANN(inp);

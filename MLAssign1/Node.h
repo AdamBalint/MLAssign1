@@ -58,4 +58,3 @@ private:
 	double lastChange = 0;
 	bool single = true;
 };
-

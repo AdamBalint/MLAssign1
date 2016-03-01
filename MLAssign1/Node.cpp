@@ -48,8 +48,8 @@ void Node::initWeights(){
 			weight *= 10;
 		weights.push_back(weight);
 		if (!single){
-			prevGradients.push_back(0.0001);
-			deltaWeights.push_back(0.0001);
+			prevGradients.push_back(0.1);
+			deltaWeights.push_back(0.1);
 			sumGradients.push_back(0);
 		}
 

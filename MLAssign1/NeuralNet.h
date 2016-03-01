@@ -17,8 +17,8 @@ class NeuralNet
 {
 public:
 	NeuralNet(); // default constructor
-	NeuralNet(int, int, float, float, bool);//epochs, value of k to use for training, learning rate, momentum, single update
-	NeuralNet(int, float, float, float, bool);//epochs, % of data to use for training, learning rate, momentum, single update
+	NeuralNet(int, int, float, float, int, bool);//epochs, value of k to use for training, learning rate, momentum, single update
+	NeuralNet(int, float, float, float, int, bool);//epochs, % of data to use for training, learning rate, momentum, single update
 
 	~NeuralNet();
 	
@@ -35,6 +35,7 @@ public:
 	void addData(std::vector<std::vector<float>>);
 	void addClasses(std::vector<std::string>);
 	int getHighest();
+	void storeDatasetName(std::string);
 
 private:
 	void trainHoldout();
@@ -62,4 +63,9 @@ private:
 	int ansLoc;
 	int learningMethod = 1; // 0 - sigmoid, 1 - tanh
 	bool single; // true - single example backprop, false - batch backprop(rprop)
+	std::string timestamp;
+	double lowestSquareError = 100000;
+
+	std::string dataSetName;
+
 };
