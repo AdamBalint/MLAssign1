@@ -194,10 +194,7 @@ void NeuralNet::trainHoldout(){
 	std::clock_t start = std::clock(); // get timer to check how long it takes to train
 	//loop through the number of epochs specified
 	for (int epoch = 0; epoch < numEpochs; epoch++){
-		//if ((epoch + 1) % 500 == 0){ //only print out every 500 epochs for speed
-			printf("Epoch: %d/%d\n", epoch + 1, numEpochs);
-			//printNetwork();
-	//	}
+		printf("Epoch: %d/%d\n", epoch + 1, numEpochs);
 
 		//randomly shuffle the training examples
 		auto engine = std::default_random_engine{};
@@ -253,8 +250,6 @@ void NeuralNet::trainHoldout(){
 			adjustWeights();
 			resetGradients();
 		}
-//		if ((epoch + 1) % 500 == 0){
-//		}
 		
 			for (int test = 0; test < testingSet.size(); test++){
 				numInSquareErrorTest++;
@@ -333,7 +328,6 @@ void NeuralNet::trainCrossValidation(){
 					if (train >= k*numInSet && train < ((k + 1) % kSize)*numInSet)
 						inTest = true;
 
-				//numInSquareError++;
 				//do the forward pass
 				runANN(trainingSet.at(train));
 
@@ -392,45 +386,16 @@ void NeuralNet::trainCrossValidation(){
 			myfile << "\t" << (squareErrorTest / numInSquareErrorTest) << "\t" << (((double)correctNumTrain) / numInSquareErrorTrain) << "\t" << (((double)correctNumTest) / numInSquareErrorTest) <<"\n";
 		}
 		
-//		if (epoch % 5 == 0){
+
 			if (oldResult - newRes > 0){
 				printf("Change from error: %f\n\n", (oldResult - newRes));
 				oldResult = newRes;
 				noImprovCount = 0;
 			}
-			else if (noImprovCount > 30){
-				printf("Change from error: %f\n\n", ((oldResult - oldResult*0.01) - newRes));
-				int a;
-				std::cin >> a;
-				break;
-			}
 			else{
 				printf("Change from error: -%f\n\n", (oldResult - newRes));
 				noImprovCount++;
 			}
-
-
-//		}
-		/*
-		if (oldRes.size() < 30){
-			oldRes.push_back(newRes);
-		}
-		else{
-			oldResult = average(oldRes);
-
-			if (oldResult - newRes > 0){
-				printf("Change from avg error: %f\n\n", (oldResult - newRes));
-				
-				oldRes.erase(oldRes.begin());
-				oldRes.push_back(newRes);
-			}
-			else{
-				printf("Change from avg error: %f\n\n", (oldResult - newRes));
-				int a;
-				std::cin >> a;
-				break;
-			}
-		}*/
 	}
 	myfile.flush();
 	myfile.close();
@@ -450,14 +415,6 @@ void NeuralNet::useANN(){
 	//ask print out stats
 	std::ofstream myfile;
 
-	
-	
-
-	/*time_t rawTime;
-	tm timeInf;
-	errno_t res = localtime_s(&timeInf, &rawTime);
-	char buff[80];
-	asctime_s(buff, 80, &timeInf);*/
 	printf("\nLearning rate: %f\n", learnRate);
 	printf("Network Type: %d-%d-%d\n\n", input.size(), hidden.at(0).size(), output.size());
 	printf("Results for inputs:\n");
@@ -466,7 +423,7 @@ void NeuralNet::useANN(){
 	myfile.open("../Results/FinalClassification-" + timestamp + ".txt");
 	myfile << "Data Set: " << dataSetName << "\n";
 	bool kfld = trainingSet.size() == 0;
-	myfile << "Data Partitioning: " << (kfld ? "K Fold" : "Holdout");
+	myfile << "Data Partitioning: " << (kfld ? "K Fold\n" : "Holdout\n");
 	if (!kfld){
 		myfile << "Training Set Size: " << trainingSet.size() << "\n";
 		myfile << "Testing Set Size: " << testingSet.size() << "\n";

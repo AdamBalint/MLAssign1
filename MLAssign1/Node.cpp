@@ -72,6 +72,7 @@ void Node::singleExampleWeightUpdate(){
 				derValue = sigmoidDer(value);
 			else if (learningMethod == 1)
 				derValue = tanhDer(value);
+
 			double errAtNode = err * derValue;
 			double adjust = learningRate * errAtNode * ((*inputs.at(i)).getOutput());
 			double mom = momentum * lastChange;
@@ -100,16 +101,13 @@ void Node::rpropWeightUpdate(){
 			
 			delta = deltaWeights.at(i) * getSign(gradient);
 			deltaWeights.at(i) = fmin(deltaWeights.at(i) * npos, deltamax);
-//			printf("increase delta\n");
 			break;
 		case -1:
 			deltaWeights.at(i) = fmax(deltaWeights.at(i) * nneg, deltamin);
 			gradient = 0;
 			skipUpdate = true;
-//			printf("decrease delta\n");
 			break;
 		case 0:
-//			printf("nothing\n");
 			delta = deltaWeights.at(i) * getSign(gradient);
 			break;
 		}
